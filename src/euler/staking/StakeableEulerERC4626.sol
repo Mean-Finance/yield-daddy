@@ -58,6 +58,11 @@ contract StakeableEulerERC4626 is EulerERC4626, Owned {
     /// Staking functions
     /// -----------------------------------------------------------------------
 
+    /// @notice Returns how much was earned during staking
+    function reward() public view returns (address rewardsToken, uint256 earned) {
+        return _calculateReward(stakingRewards);
+    }
+
     /// @notice Allows owner to set or update a new staking contract. Will claim rewards from previous staking if available
     function updateStakingAddress(uint256 rewardIndex, address /*recipient*/) external onlyOwner {
         // TODO: Claim rewards if was staking on another contract
@@ -80,5 +85,15 @@ contract StakeableEulerERC4626 is EulerERC4626, Owned {
         stakingRewards.withdraw(amount);
     }
 
+    /// -----------------------------------------------------------------------
+    /// Internal functions
+    /// -----------------------------------------------------------------------
+
+    function _calculateReward(IStakingRewards _stakingRewards) public view returns (address rewardToken, uint256 earned) {
+        if (address(_stakingRewards) != address(0)) {
+            rewardToken = _stakingRewards.rewardsToken();
+            earned = _stakingRewards.earned(address(this));
+        }
+    }  
 }
 
