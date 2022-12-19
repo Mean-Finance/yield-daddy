@@ -79,22 +79,42 @@ contract StakeableEulerERC4626Test is Test {
         vault.stake(1000);
     }
 
-    function testStaking() public {
-        _setStakingContract();
+    function testStaking() public withStakingContract {
         uint256 deposited = 10000;
         uint256 staked = 1000;
 
-        vm.prank(alice);
-        underlying.approve(address(vault), deposited);
-        vm.prank(alice);
-        vault.deposit(deposited, alice);
-
-        vm.prank(owner);
-        vault.stake(staked);
+        _deposit(alice, deposited);
+        _stake(staked);
 
         assertEq(eToken.balanceOf(address(vault)), deposited - staked);
         assertEq(eToken.balanceOf(address(stakingRewards)), staked);
         assertEq(stakingRewards.balanceOf(address(vault)), staked);
+    }
+
+    function testTotalAssets() public {
+        uint256 deposited = 10000;
+        _deposit(alice, deposited);
+
+        assertEq(vault.totalAssets(), deposited);
+
+        uint256 staked = 1000;
+        _setStakingContract();
+        _stake(staked);
+
+        // Should still be the same as before
+        assertEq(vault.totalAssets(), deposited);
+    }
+
+    function _deposit(address from, uint256 amount) internal {
+        vm.prank(from);
+        underlying.approve(address(vault), amount);
+        vm.prank(from);
+        vault.deposit(amount, from);
+    }
+
+    function _stake(uint256 amount) internal {
+        vm.prank(owner);
+        vault.stake(amount);
     }
 
     function _setStakingContract() internal {
@@ -104,6 +124,11 @@ contract StakeableEulerERC4626Test is Test {
 
     function _setDistribution(uint256 index, EulerStakingRewardsMock stakingRewards_) internal {
         rewardsDistribution.setDistribution(index, IRewardsDistribution.DistributionData(address(stakingRewards_), 100000));
+    }
+
+    modifier withStakingContract {
+        _setStakingContract();
+        _;
     }
 
 }
