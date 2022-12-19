@@ -44,6 +44,7 @@ contract StakeableEulerERC4626Test is Test {
     function testInitialization() public {
         assertEq(address(vault.rewardsDistribution()), address(rewardsDistribution));
         assertEq(vault.owner(), owner);
+        assertEq(address(vault.stakingRewards()), address(0));
     }
 
     function testFailNotOwner() public {
