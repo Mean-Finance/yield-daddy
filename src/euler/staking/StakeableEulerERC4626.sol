@@ -58,7 +58,7 @@ contract StakeableEulerERC4626 is EulerERC4626, Owned {
     /// Staking functions
     /// -----------------------------------------------------------------------
 
-    /// @notice Allows admin to set or update a new staking contract. Will claim rewards from previous staking if available
+    /// @notice Allows owner to set or update a new staking contract. Will claim rewards from previous staking if available
     function updateStakingAddress(uint256 rewardIndex, address /*recipient*/) external onlyOwner {
         // TODO: Claim rewards if was staking on another contract
 
