@@ -9,7 +9,7 @@ import {ERC20Mock} from "../../mocks/ERC20Mock.sol";
 import {StakeableEulerERC4626} from "../../../euler/staking/StakeableEulerERC4626.sol";
 import {EulerETokenMock} from "../mocks/EulerETokenMock.sol";
 import {EulerMarketsMock} from "../mocks/EulerMarketsMock.sol";
-import {EulerRewardsDistributionMock} from "../mocks/EulerRewardsDistribution.sol";
+import {EulerRewardsDistributionMock} from "../mocks/EulerRewardsDistributionMock.sol";
 
 contract StakeableEulerERC4626Test is Test {
     EulerMock public euler;
