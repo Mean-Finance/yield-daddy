@@ -47,16 +47,16 @@ contract StakeableEulerERC4626Test is Test {
         assertEq(address(vault.stakingRewards()), address(0));
     }
 
-    function testFailNotOwner() public {
+    function testFailNotOwnerUpdateStaking() public {
         vault.updateStakingAddress(1, recipient);
     }
 
-    function testFailInvalidIndex() public {
+    function testFailInvalidIndexUpdateStaking() public {
         vm.prank(owner);
         vault.updateStakingAddress(2, recipient);
     }
 
-    function testFailWrongToken() public {
+    function testFailWrongTokenUpdateStaking() public {
         EulerStakingRewardsMock stakingRewards_ = new EulerStakingRewardsMock(address(rewardsToken), address(0x0101));
         _setDistribution(2, stakingRewards_);
 
