@@ -105,6 +105,28 @@ contract StakeableEulerERC4626Test is Test {
         assertEq(vault.totalAssets(), deposited);
     }
 
+    function testWithdrawWithStaking() public withStakingContract {
+        uint256 deposited = 10000;
+        uint256 staked = 1000;
+        _deposit(alice, deposited);
+        _stake(staked);
+
+        uint256 balanceAlice = underlying.balanceOf(alice);
+
+        // Withdraw enough that unstaking is necessary
+        uint256 toWithdraw = deposited - staked / 2;
+        vm.prank(alice);
+        vault.withdraw(toWithdraw, alice, alice);
+
+        assertEq(underlying.balanceOf(alice), balanceAlice + toWithdraw);
+
+        // There should still be some staked balance
+        uint256 stakedNew = staked / 2;
+        assertEq(eToken.balanceOf(address(vault)), 0);
+        assertEq(eToken.balanceOf(address(stakingRewards)), stakedNew);
+        assertEq(stakingRewards.balanceOf(address(vault)), stakedNew);
+    }
+
     function _deposit(address from, uint256 amount) internal {
         vm.prank(from);
         underlying.approve(address(vault), amount);
