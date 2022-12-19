@@ -72,6 +72,7 @@ contract StakeableEulerERC4626Test is Test {
         vault.updateStakingAddress(1, recipient);
 
         assertEq(address(vault.stakingRewards()), address(stakingRewards));
+        assertEq(eToken.allowance(address(vault), address(stakingRewards)), type(uint256).max);
     }
 
     function testFailNotOwnerStaking() public {
