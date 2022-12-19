@@ -91,24 +91,6 @@ contract StakeableEulerERC4626Test is Test {
         assertEq(stakingRewards.balanceOf(address(vault)), staked);
     }
 
-    function testFailNotOwnerUnstaking() public {
-        vault.unstake(1000);
-    }
-
-    function testUnstaking() public withStakingContract {
-        uint256 deposited = 10000;
-        uint256 staked = 1000;
-
-        _deposit(alice, deposited);
-        _stake(staked);
-        uint256 unstake = 400;
-        _unstake(unstake);
-
-        assertEq(eToken.balanceOf(address(vault)), deposited - staked + unstake);
-        assertEq(eToken.balanceOf(address(stakingRewards)), staked - unstake);
-        assertEq(stakingRewards.balanceOf(address(vault)), staked - unstake);
-    }
-
     function testTotalAssets() public {
         uint256 deposited = 10000;
         _deposit(alice, deposited);
@@ -155,11 +137,6 @@ contract StakeableEulerERC4626Test is Test {
     function _stake(uint256 amount) internal {
         vm.prank(owner);
         vault.stake(amount);
-    }
-
-    function _unstake(uint256 amount) internal {
-        vm.prank(owner);
-        vault.unstake(amount);
     }
 
     function _setStakingContract() internal {

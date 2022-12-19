@@ -92,20 +92,15 @@ contract StakeableEulerERC4626 is EulerERC4626, Owned {
         stakingRewards.stake(amount);
     }
 
-    /// @notice Allows owner to unstake a certain amount of tokens
-    function unstake(uint256 amount) external onlyOwner {
-        stakingRewards.withdraw(amount);
-    }
-
     /// -----------------------------------------------------------------------
     /// Internal functions
     /// -----------------------------------------------------------------------
 
     function _getStakedBalance() internal view returns (uint256) {
-        IStakingRewards stakingRewards_ = stakingRewards;
-        return address(stakingRewards_) == address(0)
+        IStakingRewards _stakingRewards = stakingRewards;
+        return address(_stakingRewards) == address(0)
             ? 0
-            : stakingRewards_.balanceOf(address(this));
+            : _stakingRewards.balanceOf(address(this));
     }   
 }
 
