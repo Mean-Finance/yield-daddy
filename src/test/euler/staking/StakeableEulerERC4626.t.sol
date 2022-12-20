@@ -79,22 +79,51 @@ contract StakeableEulerERC4626Test is Test {
         vault.stake(1000);
     }
 
-    function testStaking() public {
-        _setStakingContract();
+    function testStaking() public withStakingContract {
         uint256 deposited = 10000;
         uint256 staked = 1000;
 
-        vm.prank(alice);
-        underlying.approve(address(vault), deposited);
-        vm.prank(alice);
-        vault.deposit(deposited, alice);
-
-        vm.prank(owner);
-        vault.stake(staked);
+        _deposit(alice, deposited);
+        _stake(staked);
 
         assertEq(eToken.balanceOf(address(vault)), deposited - staked);
         assertEq(eToken.balanceOf(address(stakingRewards)), staked);
         assertEq(stakingRewards.balanceOf(address(vault)), staked);
+    }
+
+    function testFailNotOwnerUnstaking() public {
+        vault.unstake(1000);
+    }
+
+    function testUnstaking() public withStakingContract {
+        uint256 deposited = 10000;
+        uint256 staked = 1000;
+
+        _deposit(alice, deposited);
+        _stake(staked);
+        uint256 unstake = 400;
+        _unstake(unstake);
+
+        assertEq(eToken.balanceOf(address(vault)), deposited - staked + unstake);
+        assertEq(eToken.balanceOf(address(stakingRewards)), staked - unstake);
+        assertEq(stakingRewards.balanceOf(address(vault)), staked - unstake);
+    }
+
+    function _deposit(address from, uint256 amount) internal {
+        vm.prank(from);
+        underlying.approve(address(vault), amount);
+        vm.prank(from);
+        vault.deposit(amount, from);
+    }
+
+    function _stake(uint256 amount) internal {
+        vm.prank(owner);
+        vault.stake(amount);
+    }
+
+    function _unstake(uint256 amount) internal {
+        vm.prank(owner);
+        vault.unstake(amount);
     }
 
     function _setStakingContract() internal {
@@ -104,6 +133,11 @@ contract StakeableEulerERC4626Test is Test {
 
     function _setDistribution(uint256 index, EulerStakingRewardsMock stakingRewards_) internal {
         rewardsDistribution.setDistribution(index, IRewardsDistribution.DistributionData(address(stakingRewards_), 100000));
+    }
+
+    modifier withStakingContract {
+        _setStakingContract();
+        _;
     }
 
 }
