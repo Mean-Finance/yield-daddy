@@ -4,6 +4,7 @@ pragma solidity ^0.8.13;
 import {ERC20} from "solmate/tokens/ERC20.sol";
 import {Owned} from "solmate/auth/Owned.sol";
 import {SafeTransferLib} from "solmate/utils/SafeTransferLib.sol";
+import {FixedPointMathLib} from "solmate/utils/FixedPointMathLib.sol";
 
 import {IEulerEToken} from "../external/IEulerEToken.sol";
 import {IRewardsDistribution} from "../external/IRewardsDistribution.sol";
@@ -55,6 +56,21 @@ contract StakeableEulerERC4626 is EulerERC4626, Owned {
     }
 
     /// -----------------------------------------------------------------------
+    /// ERC4626 overrides
+    /// -----------------------------------------------------------------------
+
+    function totalAssets() public view virtual override returns (uint256) {
+        uint256 eTokenStakedBalance = _getStakedBalance();
+        if (eTokenStakedBalance > 0) {
+            // We add all eToken balance (staked and non-staked) and then convert to underlying
+            // We do this to prevent rounding differences if we converted to underlying and then added the results
+            uint256 eTokenBalanceInContract = eToken.balanceOf(address(this));
+            return eToken.convertBalanceToUnderlying(eTokenStakedBalance + eTokenBalanceInContract);
+        }
+        return eToken.balanceOfUnderlying(address(this));
+    }
+
+    /// -----------------------------------------------------------------------
     /// Staking functions
     /// -----------------------------------------------------------------------
 
@@ -101,6 +117,13 @@ contract StakeableEulerERC4626 is EulerERC4626, Owned {
     /// -----------------------------------------------------------------------
     /// Internal functions
     /// -----------------------------------------------------------------------
+
+    function _getStakedBalance() internal view returns (uint256 eTokenStakedBalance) {
+        IStakingRewards stakingRewards_ = stakingRewards;
+        if (address(stakingRewards_) != address(0)) {
+            return stakingRewards_.balanceOf(address(this));
+        }
+    } 
 
     function _calculateReward(IStakingRewards stakingRewards_) public view returns (address rewardToken, uint256 earned) {
         if (address(stakingRewards_) != address(0)) {

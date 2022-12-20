@@ -12,6 +12,7 @@ import {EulerMarketsMock} from "../mocks/EulerMarketsMock.sol";
 import {EulerRewardsDistributionMock} from "../mocks/EulerRewardsDistributionMock.sol";
 import {EulerStakingRewardsMock} from "../mocks/EulerStakingRewardsMock.sol";
 import {IRewardsDistribution} from "../../../euler/external/IRewardsDistribution.sol";
+import {IEulerEToken} from "../../../euler/external/IEulerEToken.sol";
 
 contract StakeableEulerERC4626Test is Test {
     EulerMock public euler;
@@ -37,7 +38,7 @@ contract StakeableEulerERC4626Test is Test {
 
         rewardsDistribution = new EulerRewardsDistributionMock();
 
-        vault = new StakeableEulerERC4626(underlying, address(euler), eToken, rewardsDistribution, owner);
+        vault = new StakeableEulerERC4626(underlying, address(euler), IEulerEToken(address(eToken)), rewardsDistribution, owner);
 
         stakingRewards = new EulerStakingRewardsMock(address(rewardsToken), address(eToken));
         _setDistribution(1, stakingRewards);
@@ -195,6 +196,28 @@ contract StakeableEulerERC4626Test is Test {
         // Check allowance
         assertEq(eToken.allowance(address(vault), address(stakingRewards)), 0);
     }
+
+    function testTotalAssets() public {
+        uint256 deposited = 10000;
+        _deposit(alice, deposited);
+
+        // Check without staking contract
+        assertEq(vault.totalAssets(), deposited);
+
+        uint256 staked = 1000;
+        _setStakingContract();
+        _stake(staked);
+
+        // Should still be the same as before
+        assertEq(vault.totalAssets(), deposited);
+
+        uint256 depositedAgain = 5000;
+        _deposit(alice, depositedAgain);
+
+        // Should still be the same as before
+        assertEq(vault.totalAssets(), deposited + depositedAgain);
+    }
+
 
     function _deposit(address from, uint256 amount) internal {
         vm.prank(from);
