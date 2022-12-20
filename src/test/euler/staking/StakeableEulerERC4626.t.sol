@@ -29,6 +29,7 @@ contract StakeableEulerERC4626Test is Test {
     function setUp() public {
         euler = new EulerMock();
         underlying = new ERC20Mock();
+        rewardsToken = new ERC20Mock();
         eToken = new EulerETokenMock(underlying, euler);
         markets = new EulerMarketsMock();        
 
@@ -118,6 +119,30 @@ contract StakeableEulerERC4626Test is Test {
         assertEq(rewardsToken_, address(rewardsToken));
     }
 
+    function testFailNotOwnerClaimReward() public {
+        vault.claimReward(recipient);
+    }
+
+    function testClaimReward() public withStakingContract {
+        uint256 earned = 1000;
+        stakingRewards.setEarned(address(vault), earned);
+
+        (address rewardsToken_, uint256 earned_) = _claim(recipient);
+
+        // Check return value
+        assertEq(earned_, earned);
+        assertEq(rewardsToken_, address(rewardsToken));
+
+        // Make sure that all reward was transferred to recipient
+        assertEq(rewardsToken.balanceOf(recipient), earned);
+        assertEq(rewardsToken.balanceOf(address(stakingRewards)), 0);
+        assertEq(rewardsToken.balanceOf(address(vault)), 0);
+
+        // Now there is no more reward
+        (, uint256 earned__) = _claim(recipient);
+        assertEq(earned__, 0);
+    }
+
     function _deposit(address from, uint256 amount) internal {
         vm.prank(from);
         underlying.approve(address(vault), amount);
@@ -133,6 +158,11 @@ contract StakeableEulerERC4626Test is Test {
     function _unstake(uint256 amount) internal {
         vm.prank(owner);
         vault.unstake(amount);
+    }
+
+    function _claim(address recipient_) internal returns (address rewardsToken_, uint256 earned_) {
+        vm.prank(owner);
+        return vault.claimReward(recipient_);
     }
 
     function _setStakingContract() internal {
