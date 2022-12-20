@@ -76,6 +76,33 @@ contract StakeableEulerERC4626Test is Test {
         assertEq(eToken.allowance(address(vault), address(stakingRewards)), type(uint256).max);
     }
 
+    function testUpdateStakingAddress() public withStakingContract {
+        EulerStakingRewardsMock newStakingRewards = new EulerStakingRewardsMock(address(rewardsToken), address(eToken));        
+        _setDistribution(2, newStakingRewards);
+
+        uint256 earned = 1000;
+        stakingRewards.setEarned(address(vault), earned);
+
+        vm.prank(owner);
+        vault.updateStakingAddress(2, recipient);
+
+        // Make sure that all reward was transferred to recipient
+        assertEq(rewardsToken.balanceOf(recipient), earned);
+        assertEq(rewardsToken.balanceOf(address(stakingRewards)), 0);
+        assertEq(rewardsToken.balanceOf(address(vault)), 0);
+
+        // Now there is no more reward
+        (, uint256 earned__) = vault.reward();
+        assertEq(earned__, 0);
+
+        // Make sure staking was updated
+        assertEq(address(vault.stakingRewards()), address(newStakingRewards));
+        assertEq(eToken.allowance(address(vault), address(newStakingRewards)), type(uint256).max);
+
+        // Check allowance
+        assertEq(eToken.allowance(address(vault), address(stakingRewards)), 0);
+    }
+
     function testFailNotOwnerStaking() public {
         vault.stake(1000);
     }
@@ -164,6 +191,9 @@ contract StakeableEulerERC4626Test is Test {
 
         // Make sure there is no more staking
         assertEq(address(vault.stakingRewards()), address(0));
+
+        // Check allowance
+        assertEq(eToken.allowance(address(vault), address(stakingRewards)), 0);
     }
 
     function _deposit(address from, uint256 amount) internal {
