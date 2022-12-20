@@ -180,6 +180,12 @@ contract StakeableEulerERC4626Test is Test {
 
         // Should still be the same as before
         assertEq(vault.totalAssets(), deposited);
+
+        uint256 depositedAgain = 5000;
+        _deposit(alice, depositedAgain);
+
+        // Should still be the same as before
+        assertEq(vault.totalAssets(), deposited + depositedAgain);
     }
 
 
