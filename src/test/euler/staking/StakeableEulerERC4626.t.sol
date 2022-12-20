@@ -24,6 +24,7 @@ contract StakeableEulerERC4626Test is Test {
     EulerRewardsDistributionMock public rewardsDistribution;
     address owner = address(0xABCD);
     address recipient = address(0xDEAD);
+    address alice = address(0x1234);
 
     function setUp() public {
         euler = new EulerMock();
@@ -39,6 +40,8 @@ contract StakeableEulerERC4626Test is Test {
 
         stakingRewards = new EulerStakingRewardsMock(address(rewardsToken), address(eToken));
         _setDistribution(1, stakingRewards);
+
+        underlying.mint(alice, 100000);
     }
 
     function testInitialization() public {
@@ -69,6 +72,34 @@ contract StakeableEulerERC4626Test is Test {
         vault.updateStakingAddress(1, recipient);
 
         assertEq(address(vault.stakingRewards()), address(stakingRewards));
+        assertEq(eToken.allowance(address(vault), address(stakingRewards)), type(uint256).max);
+    }
+
+    function testFailNotOwnerStaking() public {
+        vault.stake(1000);
+    }
+
+    function testStaking() public {
+        _setStakingContract();
+        uint256 deposited = 10000;
+        uint256 staked = 1000;
+
+        vm.prank(alice);
+        underlying.approve(address(vault), deposited);
+        vm.prank(alice);
+        vault.deposit(deposited, alice);
+
+        vm.prank(owner);
+        vault.stake(staked);
+
+        assertEq(eToken.balanceOf(address(vault)), deposited - staked);
+        assertEq(eToken.balanceOf(address(stakingRewards)), staked);
+        assertEq(stakingRewards.balanceOf(address(vault)), staked);
+    }
+
+    function _setStakingContract() internal {
+        vm.prank(owner);
+        vault.updateStakingAddress(1, recipient);
     }
 
     function _setDistribution(uint256 index, EulerStakingRewardsMock stakingRewards_) internal {
