@@ -70,6 +70,26 @@ contract StakeableEulerERC4626 is EulerERC4626, Owned {
         return eToken.balanceOfUnderlying(address(this));
     }
 
+    function beforeWithdraw(uint256 assets, uint256 shares) internal virtual override {
+        uint256 underlyingBalanceInContract = eToken.balanceOfUnderlying(address(this));
+        if (underlyingBalanceInContract < assets) {
+            // Need to unstake to meet the demand
+            uint256 neededUnderlying = assets - underlyingBalanceInContract;
+            uint256 neededEToken = eToken.convertUnderlyingToBalance(neededUnderlying);
+
+            // We also withdraw 5% of remaining staked eTokens so that we can avoid unstaking again in the next withdraw
+            uint256 eTokenStakedBalance = _getStakedBalance();
+            uint256 remaining = eTokenStakedBalance - neededEToken;
+            uint256 withdrawAttempt = neededEToken + FixedPointMathLib.mulDivUp(remaining, 5, 100);
+
+            // We make sure we don't try to withdraw more than available
+            uint256 toWithdraw = eTokenStakedBalance < withdrawAttempt ? eTokenStakedBalance : withdrawAttempt;
+
+            stakingRewards.withdraw(toWithdraw);
+        }
+        super.beforeWithdraw(assets, shares);
+    }
+
     /// -----------------------------------------------------------------------
     /// Staking functions
     /// -----------------------------------------------------------------------
