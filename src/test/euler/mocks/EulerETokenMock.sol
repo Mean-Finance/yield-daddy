@@ -7,7 +7,7 @@ import {FixedPointMathLib} from "solmate/utils/FixedPointMathLib.sol";
 import {EulerMock} from "./EulerMock.sol";
 import {IEulerEToken} from "../../../euler/external/IEulerEToken.sol";
 
-contract EulerETokenMock is IEulerEToken, ERC20("EulerETokenMock", "eMOCK", 18) {
+contract EulerETokenMock is ERC20("EulerETokenMock", "eMOCK", 18) {
     using FixedPointMathLib for uint256;
 
     EulerMock public euler;
@@ -19,13 +19,10 @@ contract EulerETokenMock is IEulerEToken, ERC20("EulerETokenMock", "eMOCK", 18) 
     }
 
     function balanceOfUnderlying(address account) external view returns (uint256) {
-        uint256 supply = totalSupply; // Saves an extra SLOAD if totalSupply is non-zero.
-        uint256 shares = balanceOf[account];
-
-        return supply == 0 ? shares : shares.mulDivDown(totalAssets(), supply);
+        return convertBalanceToUnderlying(balanceOf[account]);
     }
 
-    function deposit(uint256, uint256 amount) external override {
+    function deposit(uint256, uint256 amount) external {
         // call EulerMock to transfer tokens from sender
         euler.transferTokenFrom(underlying, msg.sender, address(this), amount);
 
@@ -33,7 +30,7 @@ contract EulerETokenMock is IEulerEToken, ERC20("EulerETokenMock", "eMOCK", 18) 
         _mint(msg.sender, convertToShares(amount));
     }
 
-    function withdraw(uint256, uint256 amount) external override {
+    function withdraw(uint256, uint256 amount) external {
         // burn shares
         _burn(msg.sender, previewWithdraw(amount));
 
@@ -55,5 +52,15 @@ contract EulerETokenMock is IEulerEToken, ERC20("EulerETokenMock", "eMOCK", 18) 
 
     function totalAssets() public view virtual returns (uint256) {
         return underlying.balanceOf(address(this));
+    }
+
+    function convertBalanceToUnderlying(uint balance) public view returns (uint) {
+        uint256 supply = totalSupply; // Saves an extra SLOAD if totalSupply is non-zero.
+
+        return supply == 0 ? balance : balance.mulDivDown(totalAssets(), supply);
+    }
+
+    function convertUnderlyingToBalance(uint underlyingAmount) external view returns (uint) {
+        return convertToShares(underlyingAmount);
     }
 }

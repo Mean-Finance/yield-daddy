@@ -6,6 +6,9 @@ interface IEulerEToken {
     /// @notice Balance of a particular account, in underlying units (increases as interest is earned)
     function balanceOfUnderlying(address account) external view returns (uint256);
 
+    /// @notice Balance of a particular account
+    function balanceOf(address account) external view returns (uint256);
+
     /// @notice Transfer underlying tokens from sender to the Euler pool, and increase account's eTokens
     /// @param subAccountId 0 for primary, 1-255 for a sub-account
     /// @param amount In underlying units (use max uint256 for full underlying token balance)
@@ -15,4 +18,14 @@ interface IEulerEToken {
     /// @param subAccountId 0 for primary, 1-255 for a sub-account
     /// @param amount In underlying units (use max uint256 for full pool balance)
     function withdraw(uint256 subAccountId, uint256 amount) external;
+
+    /// @notice Convert an eToken balance to an underlying amount, taking into account current exchange rate
+    /// @param balance eToken balance, in internal book-keeping units (18 decimals)
+    /// @return Amount in underlying units, (same decimals as underlying token)
+    function convertBalanceToUnderlying(uint balance) external view returns (uint);
+
+    /// @notice Convert an underlying amount to an eToken balance, taking into account current exchange rate
+    /// @param underlyingAmount Amount in underlying units (same decimals as underlying token)
+    /// @return eToken balance, in internal book-keeping units (18 decimals)
+    function convertUnderlyingToBalance(uint underlyingAmount) external view returns (uint);
 }
