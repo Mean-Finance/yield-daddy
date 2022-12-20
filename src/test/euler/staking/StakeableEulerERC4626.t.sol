@@ -98,6 +98,9 @@ contract StakeableEulerERC4626Test is Test {
         // Make sure staking was updated
         assertEq(address(vault.stakingRewards()), address(newStakingRewards));
         assertEq(eToken.allowance(address(vault), address(newStakingRewards)), type(uint256).max);
+
+        // Check allowance
+        assertEq(eToken.allowance(address(vault), address(stakingRewards)), 0);
     }
 
     function testFailNotOwnerStaking() public {
@@ -188,6 +191,9 @@ contract StakeableEulerERC4626Test is Test {
 
         // Make sure there is no more staking
         assertEq(address(vault.stakingRewards()), address(0));
+
+        // Check allowance
+        assertEq(eToken.allowance(address(vault), address(stakingRewards)), 0);
     }
 
     function _deposit(address from, uint256 amount) internal {
