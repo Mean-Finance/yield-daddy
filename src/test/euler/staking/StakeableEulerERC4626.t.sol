@@ -109,6 +109,15 @@ contract StakeableEulerERC4626Test is Test {
         assertEq(stakingRewards.balanceOf(address(vault)), staked - unstake);
     }
 
+    function testReward() public withStakingContract {
+        uint256 earned = 1000;
+        stakingRewards.setEarned(address(vault), earned);
+
+        (address rewardsToken_, uint256 earned_) = vault.reward();
+        assertEq(earned_, earned);
+        assertEq(rewardsToken_, address(rewardsToken));
+    }
+
     function _deposit(address from, uint256 amount) internal {
         vm.prank(from);
         underlying.approve(address(vault), amount);
