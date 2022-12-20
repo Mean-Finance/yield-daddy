@@ -80,8 +80,8 @@ contract StakeableEulerERC4626 is EulerERC4626, Owned {
     }
 
     /// @notice Allows owner to set or update a new staking contract. Will claim rewards from previous staking if available
-    function updateStakingAddress(uint256 rewardIndex, address /*recipient*/) external onlyOwner {
-        // TODO: Claim rewards if was staking on another contract
+    function updateStakingAddress(uint256 rewardIndex, address recipient) external onlyOwner {
+        _stopStaking(recipient);
 
         IRewardsDistribution.DistributionData memory data = rewardsDistribution.distributions(rewardIndex);
         IStakingRewards stakingRewards_ = IStakingRewards(data.destination);
@@ -125,18 +125,19 @@ contract StakeableEulerERC4626 is EulerERC4626, Owned {
         }
     } 
 
-    function _calculateReward(IStakingRewards _stakingRewards) public view returns (address rewardToken, uint256 earned) {
-        if (address(_stakingRewards) != address(0)) {
-            rewardToken = _stakingRewards.rewardsToken();
-            earned = _stakingRewards.earned(address(this));
+    function _calculateReward(IStakingRewards stakingRewards_) public view returns (address rewardToken, uint256 earned) {
+        if (address(stakingRewards_) != address(0)) {
+            rewardToken = stakingRewards_.rewardsToken();
+            earned = stakingRewards_.earned(address(this));
         }
     }
 
     function _stopStaking(address recipient) internal {
-        IStakingRewards _stakingRewards = stakingRewards;
-        if (address(_stakingRewards) != address(0)) {
-            (address rewardToken, uint256 earned) = _calculateReward(_stakingRewards);
-            _stakingRewards.exit();
+        IStakingRewards stakingRewards_ = stakingRewards;
+        if (address(stakingRewards_) != address(0)) {
+            ERC20(address(eToken)).safeApprove(address(stakingRewards_), 0);
+            (address rewardToken, uint256 earned) = _calculateReward(stakingRewards_);
+            stakingRewards_.exit();
             _transferRewardToken(rewardToken, earned, recipient);
         }
     }
