@@ -53,7 +53,8 @@ contract StakeableEulerERC4626Test is Test {
         assertEq(address(vault.stakingRewards()), address(0));
     }
 
-    function testFailNotOwnerUpdateStaking() public {
+    function testRevertsWhenNotOwnerUpdateStaking() public {
+        vm.expectRevert("UNAUTHORIZED");
         vault.updateStakingAddress(1, recipient);
     }
 
@@ -105,7 +106,8 @@ contract StakeableEulerERC4626Test is Test {
         assertEq(eToken.allowance(address(vault), address(stakingRewards)), 0);
     }
 
-    function testFailNotOwnerStaking() public {
+    function testRevertsWhenNotOwnerStaking() public {
+        vm.expectRevert("UNAUTHORIZED");
         vault.stake(1000);
     }
 
@@ -121,7 +123,8 @@ contract StakeableEulerERC4626Test is Test {
         assertEq(stakingRewards.balanceOf(address(vault)), staked);
     }
 
-    function testFailNotOwnerUnstaking() public {
+    function testRevertsWhenNotOwnerUnstaking() public {
+        vm.expectRevert("UNAUTHORIZED");
         vault.unstake(1000);
     }
 
@@ -148,7 +151,8 @@ contract StakeableEulerERC4626Test is Test {
         assertEq(rewardsToken_, address(rewardsToken));
     }
 
-    function testFailNotOwnerClaimReward() public {
+    function testRevertsWhenNotOwnerClaimReward() public {
+        vm.expectRevert("UNAUTHORIZED");
         vault.claimReward(recipient);
     }
 
@@ -172,7 +176,8 @@ contract StakeableEulerERC4626Test is Test {
         assertEq(earned__, 0);
     }
 
-    function testFailNotOwnerStopStaking() public {
+    function testRevertsWhenNotOwnerStopStaking() public {
+        vm.expectRevert("UNAUTHORIZED");
         vault.stopStaking(recipient);
     }
 
