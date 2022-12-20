@@ -75,6 +75,12 @@ contract StakeableEulerERC4626 is EulerERC4626, Owned {
         ERC20(address(eToken)).safeApprove(address(stakingRewards_), type(uint256).max);
     }
 
+     /// @notice Allows owner to claim rewards and stop staking all together
+    function stopStaking(address recipient) external onlyOwner {
+        _stopStaking(recipient);
+        stakingRewards = IStakingRewards(address(0));
+    }
+
     /// @notice Allows owner to stake a certain amount of tokens
     function stake(uint256 amount) external onlyOwner {
         stakingRewards.stake(amount);
@@ -100,6 +106,15 @@ contract StakeableEulerERC4626 is EulerERC4626, Owned {
         if (address(_stakingRewards) != address(0)) {
             rewardToken = _stakingRewards.rewardsToken();
             earned = _stakingRewards.earned(address(this));
+        }
+    }
+
+    function _stopStaking(address recipient) internal {
+        IStakingRewards _stakingRewards = stakingRewards;
+        if (address(_stakingRewards) != address(0)) {
+            (address rewardToken, uint256 earned) = _calculateReward(_stakingRewards);
+            _stakingRewards.exit();
+            _transferRewardToken(rewardToken, earned, recipient);
         }
     }
 

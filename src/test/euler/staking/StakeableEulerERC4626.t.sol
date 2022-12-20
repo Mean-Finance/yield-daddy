@@ -143,6 +143,29 @@ contract StakeableEulerERC4626Test is Test {
         assertEq(earned__, 0);
     }
 
+    function testFailNotOwnerStopStaking() public {
+        vault.stopStaking(recipient);
+    }
+
+    function testStopStaking() public withStakingContract {
+        uint256 earned = 1000;
+        stakingRewards.setEarned(address(vault), earned);
+
+        _stopStaking(recipient);
+
+        // Make sure that all reward was transferred to recipient
+        assertEq(rewardsToken.balanceOf(recipient), earned);
+        assertEq(rewardsToken.balanceOf(address(stakingRewards)), 0);
+        assertEq(rewardsToken.balanceOf(address(vault)), 0);
+
+        // Now there is no more reward
+        (, uint256 earned__) = vault.reward();
+        assertEq(earned__, 0);
+
+        // Make sure there is no more staking
+        assertEq(address(vault.stakingRewards()), address(0));
+    }
+
     function _deposit(address from, uint256 amount) internal {
         vm.prank(from);
         underlying.approve(address(vault), amount);
@@ -163,6 +186,11 @@ contract StakeableEulerERC4626Test is Test {
     function _claim(address recipient_) internal returns (address rewardsToken_, uint256 earned_) {
         vm.prank(owner);
         return vault.claimReward(recipient_);
+    }
+
+    function _stopStaking(address recipient_) internal {
+        vm.prank(owner);
+        vault.stopStaking(recipient_);
     }
 
     function _setStakingContract() internal {
