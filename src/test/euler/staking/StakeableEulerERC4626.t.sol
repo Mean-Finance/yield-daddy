@@ -3,6 +3,7 @@ pragma solidity ^0.8.4;
 
 import "forge-std/Test.sol";
 import {console2} from "forge-std/console2.sol";
+import {FixedPointMathLib} from "solmate/utils/FixedPointMathLib.sol";
 
 import {EulerMock} from "../mocks/EulerMock.sol";
 import {ERC20Mock} from "../../mocks/ERC20Mock.sol";
@@ -109,8 +110,8 @@ contract StakeableEulerERC4626Test is Test {
     }
 
     function testStaking() public withStakingContract {
-        uint256 deposited = 10000;
-        uint256 staked = 1000;
+        uint256 deposited = 10000; // underlying + eToken (since starts 1:1)
+        uint256 staked = 1000; // eToken
 
         _deposit(alice, deposited);
         _stake(staked);
@@ -125,8 +126,8 @@ contract StakeableEulerERC4626Test is Test {
     }
 
     function testUnstaking() public withStakingContract {
-        uint256 deposited = 10000;
-        uint256 staked = 1000;
+        uint256 deposited = 10000; // underlying + eToken (since starts 1:1)
+        uint256 staked = 1000; // eToken
 
         _deposit(alice, deposited);
         _stake(staked);
@@ -218,6 +219,50 @@ contract StakeableEulerERC4626Test is Test {
         assertEq(vault.totalAssets(), deposited + depositedAgain);
     }
 
+    function testWithdrawAllStakedBalance() public withStakingContract {
+        uint256 deposited = 10000; // underlying + eToken (since starts 1:1)
+        uint256 staked = deposited; // eToken
+        _deposit(alice, deposited);
+        _stake(staked);
+
+        uint256 balanceAlice = underlying.balanceOf(alice);
+
+        // Withdraw all
+        vm.prank(alice);
+        vault.withdraw(deposited, alice, alice);
+
+        assertEq(underlying.balanceOf(alice), balanceAlice + deposited);
+
+        // There should be no more eTokens at the vault, or staked
+        assertEq(eToken.balanceOf(address(vault)), 0);
+        assertEq(eToken.balanceOf(address(stakingRewards)), 0);
+        assertEq(stakingRewards.balanceOf(address(vault)), 0);
+    }
+
+    function testWithdrawWithStaking() public withStakingContract {
+        uint256 deposited = 10000; // underlying + eToken (since starts 1:1)
+        uint256 staked = 1000; // eToken
+        _deposit(alice, deposited);
+        _stake(staked);
+        uint256 remaining = deposited - staked;
+
+        uint256 balanceAlice = underlying.balanceOf(alice);
+
+        // Withdraw enough that unstaking is necessary
+        uint256 withdrawFromStaked = staked / 4;
+        uint256 toWithdraw = remaining + withdrawFromStaked;
+        vm.prank(alice);
+        vault.withdraw(toWithdraw, alice, alice);
+
+        assertEq(underlying.balanceOf(alice), balanceAlice + toWithdraw);
+
+        // There should still be some staked balance
+        uint256 extraWithdrew = FixedPointMathLib.mulDivUp(staked - withdrawFromStaked, 5, 100);
+        uint256 leftStaking = staked - withdrawFromStaked - extraWithdrew;
+        assertEq(eToken.balanceOf(address(vault)), extraWithdrew);
+        assertEq(eToken.balanceOf(address(stakingRewards)), leftStaking);
+        assertEq(stakingRewards.balanceOf(address(vault)), leftStaking);
+    }
 
     function _deposit(address from, uint256 amount) internal {
         vm.prank(from);
