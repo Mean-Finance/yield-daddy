@@ -55,23 +55,6 @@ contract StakeableEulerERC4626 is EulerERC4626, Owned {
     }
 
     /// -----------------------------------------------------------------------
-    /// ERC4626 overrides
-    /// -----------------------------------------------------------------------
-
-    function totalAssets() public view virtual override returns (uint256) {
-        return super.totalAssets() + _getStakedBalance();
-    }
-
-    function beforeWithdraw(uint256 assets, uint256 shares) internal virtual override {
-        uint256 balanceInContract = super.totalAssets();
-        if (balanceInContract < assets) {
-            // Need to unstake to meet the demand
-            stakingRewards.withdraw(assets - balanceInContract);
-        }
-        super.beforeWithdraw(assets, shares);
-    }
-
-    /// -----------------------------------------------------------------------
     /// Staking functions
     /// -----------------------------------------------------------------------
 
@@ -97,15 +80,5 @@ contract StakeableEulerERC4626 is EulerERC4626, Owned {
         stakingRewards.withdraw(amount);
     }
 
-    /// -----------------------------------------------------------------------
-    /// Internal functions
-    /// -----------------------------------------------------------------------
-
-    function _getStakedBalance() internal view returns (uint256) {
-        IStakingRewards stakingRewards_ = stakingRewards;
-        return address(stakingRewards_) == address(0)
-            ? 0
-            : stakingRewards_.balanceOf(address(this));
-    }   
 }
 
