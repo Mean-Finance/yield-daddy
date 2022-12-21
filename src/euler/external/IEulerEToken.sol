@@ -3,6 +3,15 @@ pragma solidity ^0.8.13;
 
 /// @notice Tokenised representation of assets
 interface IEulerEToken {
+
+    // @notice Retrieve the current allowance
+    /// @param holder Xor with the desired sub-account ID (if applicable)
+    /// @param spender Trusted address
+    function allowance(address holder, address spender) external view returns (uint);
+
+    /// @notice Address of underlying asset
+    function underlyingAsset() external view returns (address);
+
     /// @notice Balance of a particular account, in underlying units (increases as interest is earned)
     function balanceOfUnderlying(address account) external view returns (uint256);
 
