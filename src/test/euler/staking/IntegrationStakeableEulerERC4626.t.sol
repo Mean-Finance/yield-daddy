@@ -123,6 +123,7 @@ contract IntegrationStakeableEulerERC4626Test is Test {
         (, uint256 emptyEarned2) = vault.reward();
         assertEq(emptyEarned2, 0);
         assertEq(address(vault.stakingRewards()), address(0));
+        assertEq(eToken.balanceOf(address(vault)), eTokenBalance2 + leftStaking);
         assertEq(eToken.allowance(address(vault), address(stakingRewards)), 0);
     }
 
