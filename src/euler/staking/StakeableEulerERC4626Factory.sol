@@ -105,7 +105,7 @@ contract StakeableEulerERC4626Factory is ERC4626Factory, Owned {
                         // Deployment bytecode:
                         type(StakeableEulerERC4626).creationCode,
                         // Constructor arguments:
-                        abi.encode(asset, euler, IEulerEToken(markets.underlyingToEToken(address(asset))))
+                        abi.encode(asset, euler, IEulerEToken(markets.underlyingToEToken(address(asset))), rewardsDistribution, address(this))
                     )
                 )
             )
