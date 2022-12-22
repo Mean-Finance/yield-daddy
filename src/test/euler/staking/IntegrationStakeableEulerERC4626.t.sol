@@ -8,18 +8,22 @@ import {ERC20} from "solmate/tokens/ERC20.sol";
 
 import {IStakingRewards} from "../../../euler/external/IStakingRewards.sol";
 import {IRewardsDistribution} from "../../../euler/external/IRewardsDistribution.sol";
+import {IEulerMarkets} from "../../../euler/external/IEulerMarkets.sol";
 import {IEulerEToken} from "../../../euler/external/IEulerEToken.sol";
 
 import {StakeableEulerERC4626} from "../../../euler/staking/StakeableEulerERC4626.sol";
+import {StakeableEulerERC4626Factory} from "../../../euler/staking/StakeableEulerERC4626Factory.sol";
 
 contract IntegrationStakeableEulerERC4626Test is Test {
     uint256 constant REWARD_INDEX = 0;
     address constant EULER = 0x27182842E098f60e3D576794A5bFFb0777E025d3;
-    IRewardsDistribution public rewardsDistribution = IRewardsDistribution(0xA9839D52E964d0ed0d6D546c27D2248Fac610c43);
+    IRewardsDistribution public REWARDS_DISTRIBUTION = IRewardsDistribution(0xA9839D52E964d0ed0d6D546c27D2248Fac610c43);
+    IEulerMarkets public EULER_MARKETS = IEulerMarkets(0x3520d5a913427E6F0D6A83E07ccD4A4da316e4d3);
 
     ERC20 public underlying;
     IStakingRewards public stakingRewards;
     IEulerEToken public eToken;
+    StakeableEulerERC4626Factory public factory;
     StakeableEulerERC4626 public vault;
     address owner = address(0x1234);
     address recipient = address(0xDEAD);
@@ -28,12 +32,13 @@ contract IntegrationStakeableEulerERC4626Test is Test {
 
 
     function setUp() public {
-        IRewardsDistribution.DistributionData memory distribution = rewardsDistribution.distributions(REWARD_INDEX);
+        IRewardsDistribution.DistributionData memory distribution = REWARDS_DISTRIBUTION.distributions(REWARD_INDEX);
         stakingRewards = IStakingRewards(distribution.destination);
         eToken = IEulerEToken(stakingRewards.stakingToken());
         underlying = ERC20(eToken.underlyingAsset());
 
-        vault = new StakeableEulerERC4626(underlying, EULER, eToken, rewardsDistribution, owner);
+        factory = new StakeableEulerERC4626Factory(EULER, EULER_MARKETS, REWARDS_DISTRIBUTION, owner);
+        vault = StakeableEulerERC4626(address(factory.createERC4626(underlying)));
 
         vm.label(address(underlying), 'Underlying');
         vm.label(address(vault), 'Vault');
@@ -141,26 +146,26 @@ contract IntegrationStakeableEulerERC4626Test is Test {
 
     function _stake(uint256 amount) internal {
         vm.prank(owner);
-        vault.stake(amount);
+        factory.stake(vault, amount);
     }
 
     function _unstake(uint256 amount) internal {
         vm.prank(owner);
-        vault.unstake(amount);
+        factory.unstake(vault, amount);
     }
 
     function _claim(address recipient_) internal returns (address rewardsToken_, uint256 earned_) {
         vm.prank(owner);
-        return vault.claimReward(recipient_);
+        return factory.claimReward(vault, recipient_);
     }
 
     function _stopStaking(address recipient_) internal {
         vm.prank(owner);
-        vault.stopStaking(recipient_);
+        factory.stopStaking(vault, recipient_);
     }
 
     function _setStakingContract(uint256 index) internal {
         vm.prank(owner);
-        vault.updateStakingAddress(index, recipient);
+        factory.updateStakingAddress(vault, index, recipient);
     }
 }
