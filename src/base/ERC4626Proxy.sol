@@ -85,7 +85,7 @@ abstract contract ERC4626Proxy is ERC4626 {
     }
 
     function maxMint(address) public view override returns (uint256) {
-        return convertToShares(maxDeposit(address(this)));
+        return convertToShares(underlyingVault.maxDeposit(address(this)));
     }
 
     function maxWithdraw(address owner) public view override returns (uint256) {
