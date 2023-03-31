@@ -7,3 +7,6 @@
 [submodule "lib/create3-factory"]
 	path = lib/create3-factory
 	url = https://github.com/zeframlou/create3-factory
+[submodule "lib/erc4626-tests"]
+	path = lib/erc4626-tests
+	url = https://github.com/a16z/erc4626-tests
