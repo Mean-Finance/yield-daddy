@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0
 pragma solidity >=0.8.0 <0.9.0;
 
-import {ERC4626Test} from "../std-test/ERC4626.test.sol";
+import {ERC4626Test} from "erc4626-tests/ERC4626.test.sol";
 import {PoolMock} from "../aave-v3/mocks/PoolMock.sol";
 import {RewardsControllerMock} from "../aave-v3/mocks/RewardsControllerMock.sol";
 import {IPool} from "../../aave-v3/external/IPool.sol";
@@ -54,13 +54,8 @@ contract ERC4626ProxyTest is ERC4626Test {
         }
     }
 
-    function afterTest() public override {
-      // Make sure that the supply matches the balance
-      assertEq(vault.totalSupply(), underlyingVault.balanceOf(address(vault)));
-    }
-
     // NOTE: The following tests are relaxed to consider only smaller values (of type uint120),
-    // since the totalAssets(), maxWithdraw(), and maxRedeem() functions fail with large values (due to overflow).
+    // since the totalAssets(), maxWithdraw(), maxMint(), and maxRedeem() functions fail with large values (due to overflow).
 
     function test_totalAssets(Init memory init) public override {
         init = clamp(init, type(uint120).max);
@@ -75,6 +70,11 @@ contract ERC4626ProxyTest is ERC4626Test {
     function test_maxRedeem(Init memory init) public override {
         init = clamp(init, type(uint120).max);
         super.test_maxRedeem(init);
+    }
+
+    function test_maxMint(Init memory init) public override {
+        init = clamp(init, type(uint120).max);
+        super.test_maxMint(init);
     }
 
     function clamp(Init memory init, uint max) internal pure returns (Init memory) {

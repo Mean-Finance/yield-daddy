@@ -1,166 +1,101 @@
 // SPDX-License-Identifier: AGPL-3.0
 pragma solidity ^0.8.13;
 
-import {ERC20} from "solmate/tokens/ERC20.sol";
-import {ERC4626} from "solmate/mixins/ERC4626.sol";
+import {ERC4626, ERC20} from "solmate/mixins/ERC4626.sol";
 import {SafeTransferLib} from "solmate/utils/SafeTransferLib.sol";
 import {FixedPointMathLib} from "solmate/utils/FixedPointMathLib.sol";
 
 /// @title ERC4626Proxy
 /// @author Sam Bugs
 /// @notice Abstract base contract for proxying to other ERC4626 vaults
-abstract contract ERC4626Proxy is ERC20 {
+abstract contract ERC4626Proxy is ERC4626 {
 
     using SafeTransferLib for ERC20;
     using SafeTransferLib for ERC4626;
     using FixedPointMathLib for uint256;
 
     /*//////////////////////////////////////////////////////////////
-                                 EVENTS
-    //////////////////////////////////////////////////////////////*/
-
-    event Deposit(address indexed caller, address indexed owner, uint256 assets, uint256 shares);
-
-    event Withdraw(
-        address indexed caller,
-        address indexed receiver,
-        address indexed owner,
-        uint256 assets,
-        uint256 shares
-    );
-
-    /*//////////////////////////////////////////////////////////////
                                IMMUTABLES
     //////////////////////////////////////////////////////////////*/
 
     ERC4626 public immutable underlyingVault;
-    ERC20 public immutable asset;
 
-    constructor (ERC4626 underlyingVault_) ERC20(_vaultName(underlyingVault_), _vaultSymbol(underlyingVault_), underlyingVault_.decimals()) {
+    constructor (ERC4626 underlyingVault_) ERC4626(underlyingVault_.asset(), _vaultName(underlyingVault_), _vaultSymbol(underlyingVault_)) {
         underlyingVault = underlyingVault_;
-        asset = underlyingVault_.asset();
         maxApproveUnderlyingVault();
-    }    
-
-    /*//////////////////////////////////////////////////////////////
-                        DEPOSIT/WITHDRAWAL LOGIC
-    //////////////////////////////////////////////////////////////*/
-
-    function deposit(uint256 assets, address receiver) public virtual returns (uint256 shares) {
-        // Need to transfer before minting or ERC777s could reenter.
-        asset.safeTransferFrom(msg.sender, address(this), assets);
-
-        // Deposit to underlying
-        shares = underlyingVault.deposit(assets, address(this));
-
-        // Mint and emit
-        _mint(receiver, shares);
-        emit Deposit(msg.sender, receiver, assets, shares);
     }
 
-    function mint(uint256 shares, address receiver) public virtual returns (uint256 assets) {
-        assets = previewMint(shares); // No need to check for rounding error, previewMint rounds up.
+    /// -----------------------------------------------------------------------
+    /// ERC4626 overrides
+    /// -----------------------------------------------------------------------
 
-        // Need to transfer before minting or ERC777s could reenter.
-        asset.safeTransferFrom(msg.sender, address(this), assets);
-
-        // Deposit to underlying
-        assets = underlyingVault.mint(shares, address(this));
-
-        // Mint and emit
-        _mint(receiver, shares);
-        emit Deposit(msg.sender, receiver, assets, shares);
+    function totalAssets() public view virtual override returns (uint256) {
+        return underlyingVault.previewRedeem(underlyingVault.balanceOf(address(this)));
     }
 
+    function afterDeposit(uint256 assets, uint256 /*shares*/ ) internal virtual override {
+        /// -----------------------------------------------------------------------
+        /// Deposit assets into the underlying vault
+        /// -----------------------------------------------------------------------
+
+        underlyingVault.deposit(assets, address(this));
+    }
+
+    /// @dev Instead of overriding beforeWithdraw only, we override withdraw so that we can send the assets directly to the receiver
     function withdraw(
         uint256 assets,
         address receiver,
         address owner
-    ) public virtual returns (uint256 shares) {
-        shares = underlyingVault.withdraw(assets, receiver, address(this));
+    ) public virtual override returns (uint256 shares) {
+        shares = previewWithdraw(assets); // No need to check for rounding error, previewWithdraw rounds up.
 
-        // Check and update allowance
         if (msg.sender != owner) {
             uint256 allowed = allowance[owner][msg.sender]; // Saves gas for limited approvals.
             if (allowed != type(uint256).max) allowance[owner][msg.sender] = allowed - shares;
         }
 
-        // Burn and emit
+        underlyingVault.withdraw(assets, receiver, address(this));
+
         _burn(owner, shares);
         emit Withdraw(msg.sender, receiver, owner, assets, shares);
     }
 
+    /// @dev Instead of overriding beforeWithdraw only, we override redeem so that we can send the assets directly to the receiver
     function redeem(
         uint256 shares,
         address receiver,
         address owner
-    ) public virtual returns (uint256 assets) {
-        // Check and update allowance
+    ) public virtual override returns (uint256 assets) {
         if (msg.sender != owner) {
             uint256 allowed = allowance[owner][msg.sender]; // Saves gas for limited approvals.
             if (allowed != type(uint256).max) allowance[owner][msg.sender] = allowed - shares;
         }
 
-        // Burn
-        _burn(owner, shares);
+        // Check for rounding error since we round down in previewRedeem.
+        require((assets = previewRedeem(shares)) != 0, "ZERO_ASSETS");
 
-        // Redeem and emit
-        assets = underlyingVault.redeem(shares, receiver, address(this));
+        underlyingVault.withdraw(assets, receiver, address(this));
+
+        _burn(owner, shares);
         emit Withdraw(msg.sender, receiver, owner, assets, shares);
     }
 
-    /*//////////////////////////////////////////////////////////////
-                            ACCOUNTING LOGIC
-    //////////////////////////////////////////////////////////////*/
-
-    function totalAssets() public view virtual returns (uint256) {
-        return convertToAssets(underlyingVault.balanceOf(address(this)));
-    }
-
-    function convertToShares(uint256 assets) public view virtual returns (uint256) {
-        return underlyingVault.convertToShares(assets);
-    }
-
-    function convertToAssets(uint256 shares) public view virtual returns (uint256) {
-        return underlyingVault.convertToAssets(shares);
-    }
-
-    function previewDeposit(uint256 assets) public view virtual returns (uint256) {
-        return underlyingVault.previewDeposit(assets);
-    }
-
-    function previewMint(uint256 shares) public view virtual returns (uint256) {
-        return underlyingVault.previewMint(shares);
-    }
-
-    function previewWithdraw(uint256 assets) public view virtual returns (uint256) {
-        return underlyingVault.previewWithdraw(assets);
-    }
-
-    function previewRedeem(uint256 shares) public view virtual returns (uint256) {
-        return underlyingVault.previewRedeem(shares);
-    }
-
-    /*//////////////////////////////////////////////////////////////
-                     DEPOSIT/WITHDRAWAL LIMIT LOGIC
-    //////////////////////////////////////////////////////////////*/
-
-    function maxDeposit(address) public view returns (uint256) {
+    function maxDeposit(address) public view override returns (uint256) {
         return underlyingVault.maxDeposit(address(this));
     }
 
-    function maxMint(address) public view returns (uint256) {
-        return underlyingVault.maxMint(address(this));
+    function maxMint(address) public view override returns (uint256) {
+        return convertToShares(maxDeposit(address(this)));
     }
 
-    function maxWithdraw(address owner) public view returns (uint256) {
+    function maxWithdraw(address owner) public view override returns (uint256) {
         uint256 maxWithdrawVault = underlyingVault.maxWithdraw(address(this));
-        uint256 assetsBalance = previewRedeem(balanceOf[owner]);
+        uint256 assetsBalance = convertToAssets(balanceOf[owner]);
         return maxWithdrawVault < assetsBalance ? maxWithdrawVault : assetsBalance;
     }
 
-    function maxRedeem(address owner) public view returns (uint256) {
-        uint256 maxRedeemVault = underlyingVault.maxRedeem(address(this));
+    function maxRedeem(address owner) public view override returns (uint256) {
+        uint256 maxRedeemVault = convertToShares(underlyingVault.maxWithdraw(address(this)));
         uint256 shareBalance = balanceOf[owner];
         return maxRedeemVault < shareBalance ? maxRedeemVault : shareBalance;
     }
@@ -175,16 +110,26 @@ abstract contract ERC4626Proxy is ERC20 {
 
     /// @dev In case something goes wrong with the underlying vault, we want the user to be able to claim the vault's
     ///      tokens to interact directly with it
-    function redeemAllForUnderlyingVaultToken(uint256 shares, address receiver) public returns (uint256 assets) {
-        // Convert shares to assets
-        assets = convertToAssets(shares);
+    function previewRedeemForUnderlyingVaultToken(uint256 shares) public view returns (uint256 underlyingVaultShares, uint256 assets) {
+        // Check for rounding error since we round down in previewRedeem.
+        require((assets = previewRedeem(shares)) != 0, "ZERO_ASSETS");
+
+        uint256 underlyingVaultBalance = underlyingVault.balanceOf(address(this));
+        underlyingVaultShares = shares.mulDivDown(underlyingVaultBalance, totalSupply);
+    }
+
+    /// @dev In case something goes wrong with the underlying vault, we want the user to be able to claim the vault's
+    ///      tokens to interact directly with it
+    function redeemForUnderlyingVaultToken(uint256 shares, address receiver) public returns (uint256 underlyingVaultShares, uint256 assets) {
+        // Calculate underlying vault's shares and assets
+        (underlyingVaultShares, assets) = previewRedeemForUnderlyingVaultToken(shares);
 
         // Burn and emit
         _burn(msg.sender, shares);
         emit Withdraw(msg.sender, receiver, msg.sender, assets, shares);
 
         // Send underlying vault's tokens
-        underlyingVault.safeTransfer(receiver, shares);
+        underlyingVault.safeTransfer(receiver, underlyingVaultShares);
     }
 
     /// -----------------------------------------------------------------------
