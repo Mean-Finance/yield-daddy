@@ -4,9 +4,10 @@ pragma solidity ^0.8.13;
 import "forge-std/Script.sol";
 
 import {CREATE3Factory} from "create3-factory/src/CREATE3Factory.sol";
-
+import {ERC20} from "solmate/tokens/ERC20.sol";
 import {IVComptroller} from "../../src/venus/external/IVComptroller.sol";
 import {VenusERC4626Factory} from "../../src/venus/VenusERC4626Factory.sol";
+import {VenusERC4626} from "../../src/venus/VenusERC4626.sol";
 
 contract DeployScript is Script {
     function run() public returns (VenusERC4626Factory deployed) {
